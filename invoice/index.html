@@ -174,16 +174,63 @@
   .block .body{white-space:pre-wrap; line-height:1.8; color:#5d4a54}
   .empty{color:#cbbcc4}
 
+  /* ===== できあがり確認オーバーレイ ===== */
+  #pvOverlay{position:fixed; inset:0; z-index:100; background:var(--bg); display:none; flex-direction:column}
+  #pvOverlay.show{display:flex}
+  .ov-bar{
+    display:flex; gap:8px; align-items:center; padding:10px 12px;
+    background:#fff; border-bottom:1.5px solid var(--line);
+  }
+  .ov-bar .t{font-size:13px; font-weight:700; margin-right:auto; white-space:nowrap}
+  .ov-body{flex:1; overflow:auto; padding:10px; -webkit-overflow-scrolling:touch}
+  #ovScaler{transform-origin:top left}
+  .sheet.a4{
+    width:210mm !important; min-height:297mm !important; padding:16mm 15mm !important;
+    border-radius:0; box-shadow:none;
+  }
+  /* ===== 画面下の操作バー（スマホのみ） ===== */
+  .mobile-bar{display:none}
+
   @media (max-width:700px){
+    body{font-size:15px; padding-bottom:78px}
     .wrap{padding:14px; gap:16px}
     header{padding:10px 14px; gap:7px}
-    header h1{font-size:14px; width:100%}
-    button{padding:9px 11px; font-size:12.5px; flex:1 1 auto; min-width:0}
+    header h1{font-size:15px; width:100%}
+    header button{padding:9px 12px; font-size:13px; flex:1 1 auto; min-width:0}
     header .spacer{display:none}
-    input[type=text], input[type=date], input[type=number], select, textarea{font-size:16px}
-    .items td input{font-size:16px}
-    .sheet{padding:8mm 7mm; border-radius:10px}
-    .card{padding:15px}
+    label{font-size:12.5px}
+    .hint{font-size:12.5px}
+    .card > h2, details summary{font-size:13.5px}
+    input[type=text], input[type=date], input[type=number], select, textarea{font-size:16px; padding:10px 12px}
+    .card{padding:16px}
+    .preview-area{display:none}
+
+    /* 明細を縦積みカードに */
+    .items thead{display:none}
+    .items, .items tbody{display:block; width:100%}
+    .items tr{
+      display:flex; flex-wrap:wrap; gap:9px; align-items:flex-end;
+      border:1.5px solid var(--line); border-radius:14px;
+      padding:12px; margin-bottom:10px; background:#fffdfe;
+    }
+    .items td{display:block; padding:0}
+    .items td:nth-child(1){flex:1 1 100%}
+    .items td:nth-child(2){flex:0 0 84px}
+    .items td:nth-child(3){flex:1 1 130px}
+    .items td:nth-child(4){flex:0 0 auto; align-self:center}
+    .items td input{font-size:16px; padding:9px 11px}
+    .mini{display:block; font-size:12px; color:var(--muted); font-weight:600; margin-bottom:3px}
+    .del{font-size:20px; padding:8px 4px}
+
+    .mobile-bar{
+      display:flex; align-items:center; gap:9px; position:fixed; left:0; right:0; bottom:0;
+      padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+      background:rgba(255,255,255,.96); border-top:1.5px solid var(--line); z-index:40;
+      box-shadow:0 -3px 14px rgba(190,150,170,.14);
+    }
+    .mobile-bar .sum{font-size:12px; color:var(--muted); font-weight:700; line-height:1.3; white-space:nowrap}
+    .mobile-bar .sum b{display:block; font-size:16px; color:var(--ink)}
+    .mobile-bar button{flex:1 1 auto; padding:11px 10px; font-size:13.5px}
   }
   @media (max-width:1200px){
     .wrap{flex-direction:column; align-items:stretch}
@@ -303,7 +350,7 @@
   </div>
 
   <!-- ============ プレビュー ============ -->
-  <div class="preview-area">
+  <div class="preview-area" id="previewArea">
     <div class="sheet" id="sheet">
      <div class="sheet-inner">
       <div class="title-wrap">
@@ -343,6 +390,24 @@
       </div>
      </div>
     </div>
+  </div>
+</div>
+
+<div class="mobile-bar">
+  <div class="sum">ご請求金額<b id="mbTotal">¥0</b></div>
+  <button id="btnPreview">できあがりを見る</button>
+  <button id="btnPdfM" class="primary">PDFを保存</button>
+</div>
+
+<div id="pvOverlay">
+  <div class="ov-bar">
+    <span class="t">できあがり</span>
+    <button id="btnZoom">拡大</button>
+    <button id="btnPdfO" class="primary">PDFを保存</button>
+    <button id="btnClosePv">閉じる</button>
+  </div>
+  <div class="ov-body" id="ovBody">
+    <div id="ovHolder"><div id="ovScaler"></div></div>
   </div>
 </div>
 
@@ -779,9 +844,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   function addRow(name, qty, price){
     var tr = document.createElement('tr');
     tr.innerHTML =
-      '<td><input type="text" class="i-name" placeholder="〇〇料 一式"></td>' +
-      '<td><input type="number" class="i-qty" min="0" step="1" value="1"></td>' +
-      '<td><input type="number" class="i-price" min="0" step="1" placeholder="0"></td>' +
+      '<td><span class="mini">品目・内容</span><input type="text" class="i-name" placeholder="〇〇料 一式"></td>' +
+      '<td><span class="mini">数量</span><input type="number" class="i-qty" min="0" step="1" value="1"></td>' +
+      '<td><span class="mini">単価</span><input type="number" class="i-price" min="0" step="1" placeholder="0"></td>' +
       '<td><button class="del" title="削除">×</button></td>';
     $('itemBody').appendChild(tr);
     if(name != null) tr.querySelector('.i-name').value = name;
@@ -857,6 +922,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     t += '<tr class="sum"><td>合計</td><td>' + yen(total) + '</td></tr>';
     $('pvTotals').innerHTML = t;
     $('pvGrand').textContent = yen(total);
+    $('mbTotal').textContent = yen(total);
 
     var cn = $('clientName').value.trim();
     var honor = $('clientHonor').value;
@@ -967,6 +1033,38 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     render();
   }
 
+  /* ---------- できあがり確認（スマホ） ---------- */
+  var zoomFull = false;
+
+  function fitPreview(){
+    var sheet = $('sheet'), scaler = $('ovScaler'), holder = $('ovHolder');
+    scaler.style.transform = 'none';
+    var w = sheet.offsetWidth, h = sheet.offsetHeight;
+    var avail = $('ovBody').clientWidth - 4;
+    var k = zoomFull ? 1 : Math.min(1, avail / w);
+    scaler.style.transform = 'scale(' + k + ')';
+    holder.style.width  = (w * k) + 'px';
+    holder.style.height = (h * k) + 'px';
+    $('btnZoom').textContent = zoomFull ? '全体' : '拡大';
+  }
+
+  function openPreview(){
+    var sheet = $('sheet');
+    sheet.classList.add('a4');
+    $('ovScaler').appendChild(sheet);
+    $('pvOverlay').classList.add('show');
+    zoomFull = false;
+    setTimeout(fitPreview, 30);
+  }
+
+  function closePreview(){
+    var sheet = $('sheet');
+    sheet.classList.remove('a4');
+    $('ovScaler').style.transform = 'none';
+    $('previewArea').appendChild(sheet);
+    $('pvOverlay').classList.remove('show');
+  }
+
   /* ---------- PDF 保存 ---------- */
   function savePdf(){
     var btn = $('btnPdf');
@@ -980,6 +1078,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     var clone = sheet.cloneNode(true);
     clone.style.width = '210mm';
     clone.style.minHeight = '297mm';
+    clone.style.padding = '16mm 15mm';
     clone.style.boxShadow = 'none';
     clone.style.borderRadius = '0';
     holder.appendChild(clone);
@@ -1020,6 +1119,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
   /* ---------- 初期値を埋め込んだファイルを書き出す ---------- */
   function saveDefaults(){
+    if($('pvOverlay').classList.contains('show')) closePreview();
     var data = {};
     SAVE_KEYS.forEach(function(k){ data[k] = $(k).value; });
     data.clientHonor = $('clientHonor').value;
@@ -1079,6 +1179,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   });
   $('btnAddRow').addEventListener('click', function(){ addRow(); render(); });
   $('btnPdf').addEventListener('click', savePdf);
+  $('btnPdfM').addEventListener('click', savePdf);
+  $('btnPdfO').addEventListener('click', savePdf);
+  $('btnPreview').addEventListener('click', openPreview);
+  $('btnClosePv').addEventListener('click', closePreview);
+  $('btnZoom').addEventListener('click', function(){ zoomFull = !zoomFull; fitPreview(); });
+  window.addEventListener('resize', function(){ if($('pvOverlay').classList.contains('show')) fitPreview(); });
   $('btnSaveDefaults').addEventListener('click', saveDefaults);
   $('btnClear').addEventListener('click', function(){
     $('subject').value = '';
