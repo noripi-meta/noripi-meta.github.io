@@ -932,7 +932,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     return {y:y, m:m};
   }
   function autoInvNo(){ var t = targetParts(); return '' + t.y + pad(t.m); }
-  function autoDue(){ var p = issueParts(); return iso(new Date(p.y, p.m + 1, 0)); } // 翌月末
+  function autoDue(){ // 発行日から1週間後
+    var v = $('issueDate').value, d;
+    if(v){ var p = v.split('-'); d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])); }
+    else { d = new Date(); }
+    d.setDate(d.getDate() + 7);
+    return iso(d);
+  }
 
   var autoInv = true, autoDueFlag = true, autoItem = true;
 
