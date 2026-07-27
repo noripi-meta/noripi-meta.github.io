@@ -905,8 +905,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     var base = DEFAULTS.itemName || '';
     if(!base) return '';
     if(!DEFAULTS.itemMonthly) return base;
-    var p = issueParts();
-    return base + '（' + p.y + '年' + p.m + '月分）';
+    var t = targetParts();
+    return base + '（' + t.y + '年' + t.m + '月分）';
   }
 
   function applyDefaults(){
@@ -925,7 +925,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     if(v){ var p = v.split('-'); return {y:Number(p[0]), m:Number(p[1])}; }
     d = new Date(); return {y:d.getFullYear(), m:d.getMonth()+1};
   }
-  function autoInvNo(){ var p = issueParts(); return '' + p.y + pad(p.m); }
+  // 請求対象＝発行日の「前月」
+  function targetParts(){
+    var p = issueParts(), y = p.y, m = p.m - 1;
+    if(m === 0){ m = 12; y -= 1; }
+    return {y:y, m:m};
+  }
+  function autoInvNo(){ var t = targetParts(); return '' + t.y + pad(t.m); }
   function autoDue(){ var p = issueParts(); return iso(new Date(p.y, p.m + 1, 0)); } // 翌月末
 
   var autoInv = true, autoDueFlag = true, autoItem = true;
